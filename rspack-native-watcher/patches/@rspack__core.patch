@@ -1,0 +1,65 @@
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..341b32de9bc3c56812e89222af9a05631fb85514
+--- /dev/null
++++ b/.vscode/settings.json
+@@ -0,0 +1,3 @@
++{
++  "files.autoSave": "afterDelay"
++}
+\ No newline at end of file
+diff --git a/dist/index.js b/dist/index.js
+index 4bb49c855ca84dbbffaf96d7e0ddf2527276538b..d60aa18914159c21c5caa761a1a431716339000e 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -10283,6 +10283,7 @@ Help:
+ `;
+     class NativeWatchFileSystem {
+         #inner;
++        #isFirstWatch = !0;
+         #inputFileSystem;
+         constructor(inputFileSystem){
+             this.#inputFileSystem = inputFileSystem;
+@@ -10294,16 +10295,7 @@ Help:
+             if ("object" != typeof options) throw Error("Invalid arguments: 'options'");
+             if ("function" != typeof callbackUndelayed && callbackUndelayed) throw Error("Invalid arguments: 'callbackUndelayed'");
+             let nativeWatcher = this.getNativeWatcher(options);
+-            return nativeWatcher.watch([
+-                Array.from(files.added),
+-                Array.from(files.removed)
+-            ], [
+-                Array.from(directories.added),
+-                Array.from(directories.removed)
+-            ], [
+-                Array.from(missing.added),
+-                Array.from(missing.removed)
+-            ], (err, result)=>{
++            return nativeWatcher.watch(this.formatWatchDependencies(files), this.formatWatchDependencies(directories), this.formatWatchDependencies(missing), (err, result)=>{
+                 if (err) return void callback(err, new Map(), new Map(), new Set(), new Set());
+                 nativeWatcher.pause();
+                 let changedFiles = result.changedFiles, removedFiles = result.removedFiles;
+@@ -10315,7 +10307,7 @@ Help:
+                 callback(err, new Map(), new Map(), new Set(changedFiles), new Set(removedFiles));
+             }, (fileName)=>{
+                 callbackUndelayed(fileName, Date.now());
+-            }), {
++            }), this.#isFirstWatch = !1, {
+                 close: ()=>{
+                     nativeWatcher.close().then(()=>{
+                         this.#inner = void 0;
+@@ -10350,6 +10342,15 @@ Help:
+         triggerEvent(kind, path) {
+             this.#inner?.triggerEvent(kind, path);
+         }
++        formatWatchDependencies(dependencies) {
++            return this.#isFirstWatch ? [
++                Array.from(dependencies),
++                []
++            ] : [
++                Array.from(dependencies.added ?? []),
++                Array.from(dependencies.removed ?? [])
++            ];
++        }
+     }
+     let VFILES_BY_COMPILER = new WeakMap();
+     class VirtualModulesPlugin {
